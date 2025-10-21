@@ -8,6 +8,9 @@ from collections import deque
 import threading
 import time
 
+LEARNING_RATE = 0.001
+GAMMA = 0.99
+
 class Actor(nn.Module):
     def __init__(self, state_size, action_size):
         super(Actor, self).__init__()
@@ -33,11 +36,20 @@ class Critic(nn.Module):
     def forward(self, state):
         return self.network(state)
 
-def evaluate_agent(env, actor_model, eval_episodes=10):
+def evaluate_agent_threaded(actor_model_path, eval_episodes=10):
     """
     It tests the agent without learning, using only the actions it knows best at the time.
     """
-    # eval_env = gym.make("CartPole-v1", render_mode='human')
+    global latest_eval_score, is_eval_done
+
+    eval_env = gym.make("CartPole-v1", render_mode=None)
+    state_size = eval_env.observation_space.shape[0]
+    action_size = eval_env.action_space.n
+
+    actor_to_eval = Actor(state_size, action_size)
+    actor_to_eval.load_state_dict(torch.load(actor_model_path))
+    actor_to_eval.eval()
+
     total_rewards = 0
 
     for _ in range(eval_episodes):
@@ -48,7 +60,7 @@ def evaluate_agent(env, actor_model, eval_episodes=10):
             # Speed up by telling PyTorch not to calculate gradients
             with torch.no_grad():
                 state_tensor = torch.FloatTensor(state).unsqueeze(0)
-                action_probs = actor_model(state_tensor)
+                action_probs = actor_to_eval(state_tensor)
 
                 # Instead of random selection (.sample()), choose the action with the highest probability
                 action = torch.argmax(action_probs, dim=1)
@@ -58,8 +70,13 @@ def evaluate_agent(env, actor_model, eval_episodes=10):
             state = next_state
         total_rewards += episode_reward
 
-    # env.close()
-    return total_rewards / eval_episodes
+    avg_reward = total_rewards / eval_episodes
+
+    with EVAL_LOCK:
+        latest_eval_score = avg_reward
+        is_eval_done = True
+
+    eval_env.close()
 
 def update_annot(line, annot, ind):
     """Show info the hovered point."""
@@ -112,7 +129,7 @@ ax1.set_xlabel("Episode")
 ax1.set_ylabel("Total Rewards")
 ax1.set_title("Total Rewards per Episode")
 line_rewards, = ax1.plot([], [], label="Education Award", color="cyan", picker=True, pickradius=5)
-line_eval, = ax1.plot([], [], label="Evaluation Award", color="purple", linewidth=2, marker='o', picker=True, pickradius=5)
+line_eval, = ax1.plot([], [], label="Evaluation Award", color="purple", linewidth=2, picker=True, pickradius=5)
 ax1.legend()
 
 # Graph 2: Losses
@@ -139,11 +156,10 @@ all_rewards = deque(maxlen=100)
 all_actor_losses = deque(maxlen=100)
 all_critic_losses = deque(maxlen=100)
 
-eval_episode_numbers = []
+eval_episode_numbers = deque(maxlen=100)
 all_eval_rewards = deque(maxlen=100)
 
-LEARNING_RATE = 0.001
-GAMMA = 0.99
+
 
 env = gym.make("CartPole-v1", render_mode='human')
 
@@ -220,11 +236,27 @@ for episode in range(MAX_EPISODES):
     all_actor_losses.append(np.mean(episode_actor_losses))
     all_critic_losses.append(np.mean(episode_critic_losses))
 
-    if (episode + 1) % 10 == 0:
-        avg_eval_reward = evaluate_agent(env, actor, eval_episodes=10)
-        eval_episode_numbers.append(episode)
-        all_eval_rewards.append(avg_eval_reward)
-        print(f"--- Evaluation Result: Average Reward = {avg_eval_reward:.2f} ---")
+    # --- NEW PARALLEL PART ---
+    with EVAL_LOCK:
+        # If the previous evaluation has finished...
+        if is_eval_done:
+            # Start a new evaluation every 10 episodes
+            if (episode + 1) % 10 == 0:
+                is_eval_done = False
+                # 1. Save the current actor's brain to disk
+                actor_model_path = "temp_actor.pth"
+                torch.save(actor.state_dict(), actor_model_path)
+
+                # 2. Hire the assistant thread and give it the task
+                eval_thread = threading.Thread(target=evaluate_agent_threaded,
+                                               args=(actor_model_path,),
+                                               daemon=True)  # Shut down the thread when the main program closes
+                eval_thread.start()
+
+        # Add the latest completed evaluation score to the graph.
+        if latest_eval_score > 0:
+            eval_episode_numbers.append(episode)
+            all_eval_rewards.append(latest_eval_score)
 
     # 2. Update line data
     line_rewards.set_data(list(episode_numbers), list(all_rewards))
