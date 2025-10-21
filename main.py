@@ -74,7 +74,7 @@ for episode in range(1000):
 
         # 4. "Beklenti Farkı"nı (TD Error) hesapla
         # Bu, öğrenmenin temel sinyalidir!
-        advantage = reward + gamma * next_state_value - current_state_value
+        advantage = reward + gamma * next_state_value - current_state_value # Advantage = [ŞİMDİ ne oldu] - [ŞİMDİ ne olmasını bekliyordum]
 
         # 5. Aktör'ü güncelle
         log_prob = dist.log_prob(action)
