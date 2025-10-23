@@ -189,15 +189,15 @@ if st.session_state['training_started']:
             state = next_state
 
             # --- VISUALIZATION (Streamlit Method) ---
-            # Update the simulation screen every 10 steps
-            if (int(episode_reward) % 10 == 0):
+            # Update the simulation screen every 5 steps
+            if (int(episode_reward) % 3 == 0):
                 simulation_image_placeholder.image(frame, caption=f"Episode: {episode + 1} | Step: {int(episode_reward)}")
 
         # --- END OF EPISODE UPDATES ---
 
         # 1. Calculate the evaluation score (if it's time)
         eval_reward = np.nan
-        if (episode + 1) % 10 == 0:
+        if (episode + 1) % 20 == 0:
             eval_reward = evaluate_agent(actor, eval_episodes=5)
 
         # 2. Aggregate ALL data for this completed episode
@@ -213,61 +213,62 @@ if st.session_state['training_started']:
         chart_data = pd.concat([chart_data, pd.DataFrame([new_data_row])], ignore_index=True)
 
         # 4. Calculate moving averages AFTER the new data is added
-        chart_data['Reward Trend'] = chart_data['Reward'].rolling(window=10, min_periods=1).mean()
-        chart_data['Actor Loss Trend'] = chart_data['Actor Loss'].rolling(window=10, min_periods=1).mean()
-        chart_data['Critic Loss Trend'] = chart_data['Critic Loss'].rolling(window=10, min_periods=1).mean()
+        if (episode + 1) % 5 == 0:
+            chart_data['Reward Trend'] = chart_data['Reward'].rolling(window=10, min_periods=1).mean()
+            chart_data['Actor Loss Trend'] = chart_data['Actor Loss'].rolling(window=10, min_periods=1).mean()
+            chart_data['Critic Loss Trend'] = chart_data['Critic Loss'].rolling(window=10, min_periods=1).mean()
 
-        # 5. Update the chart placeholder using the complete and correct data
-        with charts_placeholder.container():
+            # 5. Update the chart placeholder using the complete and correct data
+            with charts_placeholder.container():
 
-            g_col1, g_col2 = st.columns(2)
+                g_col1, g_col2 = st.columns(2)
 
-            with g_col1:
-                # --- Reward Chart ---
-                st.subheader("Reward Chart")
+                with g_col1:
+                    # --- Reward Chart ---
+                    st.subheader("Reward Chart")
 
-                # Melt the data for BOTH reward types into a long format
-                reward_data_long = chart_data.melt(
-                    id_vars=["Episode"],
-                    value_vars=["Reward Trend", "Evaluation Reward"],
-                    var_name="Data Type",
-                    value_name="Value"
-                )
+                    # Melt the data for BOTH reward types into a long format
+                    reward_data_long = chart_data.melt(
+                        id_vars=["Episode"],
+                        value_vars=["Reward Trend", "Evaluation Reward"],
+                        var_name="Data Type",
+                        value_name="Value"
+                    )
 
-                # Create a single chart with two different marks (line and point)
-                reward_chart = alt.Chart(reward_data_long).encode(
-                    x=alt.X('Episode:Q', axis=alt.Axis(title='Episode')),
-                    y=alt.Y('Value:Q', axis=alt.Axis(title='Total Reward')),
-                    color=alt.Color('Data Type:N', legend=alt.Legend(title="Data Type"))
-                )
+                    # Create a single chart with two different marks (line and point)
+                    reward_chart = alt.Chart(reward_data_long).encode(
+                        x=alt.X('Episode:Q', axis=alt.Axis(title='Episode')),
+                        y=alt.Y('Value:Q', axis=alt.Axis(title='Total Reward')),
+                        color=alt.Color('Data Type:N', legend=alt.Legend(title="Data Type"))
+                    )
 
-                final_reward_chart = (reward_chart.transform_filter(
-                    alt.datum['Data Type'] == 'Reward Trend'
-                ).mark_line() + reward_chart.transform_filter(
-                    alt.datum['Data Type'] == 'Evaluation Reward'
-                ).mark_point(filled=True, size=80, opacity=0.8)).interactive().properties(
-                    title="Training Trend (Moving Avg) vs. Evaluation Score"
-                )
+                    final_reward_chart = (reward_chart.transform_filter(
+                        alt.datum['Data Type'] == 'Reward Trend'
+                    ).mark_line() + reward_chart.transform_filter(
+                        alt.datum['Data Type'] == 'Evaluation Reward'
+                    ).mark_point(filled=True, size=80, opacity=0.8)).interactive().properties(
+                        title="Training Trend (Moving Avg) vs. Evaluation Score"
+                    )
 
-                st.altair_chart(final_reward_chart, use_container_width=True)
+                    st.altair_chart(final_reward_chart, use_container_width=True)
 
-            with g_col2:
-                st.subheader("Loss Charts")
-                loss_data_long = chart_data.melt(id_vars=["Episode"], value_vars=["Actor Loss Trend", "Critic Loss Trend"],
-                                                 var_name="Loss Type", value_name="Value")
-                loss_chart = alt.Chart(loss_data_long).mark_line().encode(
-                    x=alt.X('Episode:Q', axis=alt.Axis(title='Episode')), y=alt.Y('Value:Q', axis=alt.Axis(title='Loss')),
-                    color=alt.Color('Loss Type:N', legend=alt.Legend(title="Loss Type")),
-                    tooltip=['Episode', 'Value']).properties(
-                    title="Actor vs. Critic Loss").interactive()
-                st.altair_chart(loss_chart, use_container_width=True)
+                with g_col2:
+                    st.subheader("Loss Charts")
+                    loss_data_long = chart_data.melt(id_vars=["Episode"], value_vars=["Actor Loss Trend", "Critic Loss Trend"],
+                                                     var_name="Loss Type", value_name="Value")
+                    loss_chart = alt.Chart(loss_data_long).mark_line().encode(
+                        x=alt.X('Episode:Q', axis=alt.Axis(title='Episode')), y=alt.Y('Value:Q', axis=alt.Axis(title='Loss')),
+                        color=alt.Color('Loss Type:N', legend=alt.Legend(title="Loss Type")),
+                        tooltip=['Episode', 'Value']).properties(
+                        title="Actor vs. Critic Loss").interactive()
+                    st.altair_chart(loss_chart, use_container_width=True)
 
-        # 6. Update the log placeholder
-        with log_placeholder.container():
-            st.text(f"Episode {episode + 1}: Total Reward: {episode_reward}")
-            if not np.isnan(eval_reward):
-                st.success(f"--- Evaluation Result (Episode {episode+1}): Average Reward = {eval_reward:.2f} ---")
-            st.dataframe(chart_data.tail(10))
+            # 6. Update the log placeholder
+            with log_placeholder.container():
+                st.text(f"Episode {episode + 1}: Total Reward: {episode_reward}")
+                if not np.isnan(eval_reward):
+                    st.success(f"--- Evaluation Result (Episode {episode+1}): Average Reward = {eval_reward:.2f} ---")
+                st.dataframe(chart_data.tail(10))
 
     env.close()
     st.success("Training complete!")
