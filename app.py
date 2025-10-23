@@ -191,9 +191,9 @@ if st.session_state['training_started']:
 
             # --- VISUALIZATION (Streamlit Method) ---
             # Update the simulation screen every 5 steps
-            if int(episode_reward) % 20 == 0:
-                width = int(frame.shape[1] * 0.25)
-                height = int(frame.shape[0] * 0.25)
+            if int(episode_reward) % 5 == 0:
+                width = int(frame.shape[1] * 0.10)
+                height = int(frame.shape[0] * 0.10)
                 resized_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
                 simulation_image_placeholder.image(resized_frame, caption=f"Episode: {episode + 1} | Step: {int(episode_reward)}")
 
