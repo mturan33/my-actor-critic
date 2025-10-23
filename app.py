@@ -189,8 +189,8 @@ if st.session_state['training_started']:
             state = next_state
 
             # --- VISUALIZATION (Streamlit Method) ---
-            # Update the simulation screen every 20 steps
-            if (int(episode_reward) % 20 == 0):
+            # Update the simulation screen every 3 steps
+            if (int(episode_reward) % 3 == 0):
                 simulation_image_placeholder.image(frame, caption=f"Episode: {episode + 1} | Step: {int(episode_reward)}")
 
         # --- END OF EPISODE UPDATES ---
