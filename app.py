@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import time
 import altair as alt
+import cv2
 
 # How To Run In Local: powershell streamlit run app.py
 
@@ -190,8 +191,11 @@ if st.session_state['training_started']:
 
             # --- VISUALIZATION (Streamlit Method) ---
             # Update the simulation screen every 5 steps
-            if (int(episode_reward) % 3 == 0):
-                simulation_image_placeholder.image(frame, caption=f"Episode: {episode + 1} | Step: {int(episode_reward)}")
+            if (int(episode_reward) % 5 == 0):
+                width = int(frame.shape[1] * 0.75)
+                height = int(frame.shape[0] * 0.75)
+                resized_frame = cv2.resize(frame, (width, height), interpolation=cv2.INTER_AREA)
+                simulation_image_placeholder.image(resized_frame, caption=f"Episode: {episode + 1} | Step: {int(episode_reward)}")
 
         # --- END OF EPISODE UPDATES ---
 
@@ -213,7 +217,7 @@ if st.session_state['training_started']:
         chart_data = pd.concat([chart_data, pd.DataFrame([new_data_row])], ignore_index=True)
 
         # 4. Calculate moving averages AFTER the new data is added
-        if (episode + 1) % 5 == 0:
+        if (episode + 1) % 3 == 0:
             chart_data['Reward Trend'] = chart_data['Reward'].rolling(window=10, min_periods=1).mean()
             chart_data['Actor Loss Trend'] = chart_data['Actor Loss'].rolling(window=10, min_periods=1).mean()
             chart_data['Critic Loss Trend'] = chart_data['Critic Loss'].rolling(window=10, min_periods=1).mean()
