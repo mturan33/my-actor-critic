@@ -79,6 +79,7 @@ The agent uses a simple **Actor-Critic** algorithm.
 - **Simulation Screen:** Shows the agent's performance in real-time.
 - **Training Charts:** Visualize the agent's learning process.
 - **Training Logs:** Displays the raw data for the last 10 episodes.
+- **Github Repository:** https://github.com/mturan33/my-actor-critic
 """)
 
 st.info("Click the 'Start Training!' button below to begin the live training process.")
