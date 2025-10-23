@@ -72,6 +72,17 @@ def evaluate_agent(actor_model, eval_episodes=5):
 st.set_page_config(layout="wide")
 st.title("🤖 Live Actor-Critic RL Training: CartPole")
 
+st.markdown("""
+This interactive web application demonstrates a Reinforcement Learning agent learning to solve the **CartPole-v1** problem from scratch, right in your browser.
+The agent uses a simple **Actor-Critic** algorithm.
+
+- **Simulation Screen:** Shows the agent's performance in real-time.
+- **Training Charts:** Visualize the agent's learning process.
+- **Training Logs:** Displays the raw data for the last 10 episodes.
+""")
+
+st.info("Click the 'Start Training!' button below to begin the live training process.")
+
 # Divide the page into two main columns
 col1, col2 = st.columns(2)
 
@@ -99,9 +110,14 @@ div.stButton > button:first-child {
     border-radius: 10px;
 }
 </style>""", unsafe_allow_html=True)
-start_button = st.button("🚀 Start Training!")
 
-if start_button:
+if 'training_started' not in st.session_state:
+    st.session_state['training_started'] = False
+
+if st.button("🚀 Start Training!"):
+    st.session_state['training_started'] = True
+
+if st.session_state['training_started']:
     # --- Hyperparameters ---
     LEARNING_RATE = 0.0005
     GAMMA = 0.98
