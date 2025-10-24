@@ -146,7 +146,6 @@ if st.session_state['training_started']:
         episode_actor_losses = []
         episode_critic_losses = []
 
-        # This loop runs for every single step WITHIN an episode
         while not done:
             # --- 1. ACTION SELECTION ---
             state_tensor = torch.FloatTensor(state).unsqueeze(0)
